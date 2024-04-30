@@ -10,25 +10,21 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import java.net.URI
 import java.util.ArrayList
 import kotlin.math.roundToInt
+import com.lagradost.cloudstream3.metaproviders.TmdbProvider
 
-open class StremioX : MainAPI() {
+class StremioX : TmdbProvider() {
     override var mainUrl = "https://torrentio.strem.fun"
     override var name = "StremioX"
     override val hasMainPage = true
     override val hasQuickSearch = true
-    override val supportedTypes = setOf(
-        TvType.Others,
-    )
+    override val supportedTypes = setOf(TvType.Others)
 
     companion object {
-        const val TRACKER_LIST_URL =
-            "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt"
+        const val TRACKER_LIST_URL = "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt"
         private const val tmdbAPI = "https://api.themoviedb.org/3"
-        private val apiKey =
-            base64DecodeAPI("ZTM=NTg=MjM=MjM=ODc=MzI=OGQ=MmE=Nzk=Nzk=ZjI=NTA=NDY=NDA=MzA=YjA=") // PLEASE DON'T STEAL
+        private const val apiKey = BuildConfig.TMDB_API
 
         fun getType(t: String?): TvType {
             return when (t) {
@@ -43,11 +39,6 @@ open class StremioX : MainAPI() {
                 else -> ShowStatus.Completed
             }
         }
-
-        private fun base64DecodeAPI(api: String): String {
-            return api.chunked(4).map { base64Decode(it) }.reversed().joinToString("")
-        }
-
     }
 
     override val mainPage = mainPageOf(
@@ -158,7 +149,7 @@ open class StremioX : MainAPI() {
                                 eps.seasonNumber,
                                 eps.episodeNumber
                             ).toJson(),
-                            name = eps.name + if (isUpcoming(eps.airDate)) " - [UPCOMING]" else "",
+                            name = eps.name + if (isUpcoming(eps.airDate)) " • [UPCOMING]" else "",
                             season = eps.seasonNumber,
                             episode = eps.episodeNumber,
                             posterUrl = getImageUrl(eps.stillPath),
@@ -176,11 +167,12 @@ open class StremioX : MainAPI() {
                 this.backgroundPosterUrl = bgPoster
                 this.year = year
                 this.plot = res.overview
-                this.tags = if (isAnime) keywords else genres
+                this.tags =  keywords.takeIf { !it.isNullOrEmpty() } ?: genres
                 this.rating = rating
                 this.showStatus = getStatus(res.status)
                 this.recommendations = recommendations
                 this.actors = actors
+                this.contentRating = fetchContentRating(data.id, "US")
                 addTrailer(trailer)
                 addTMDbId(data.id.toString())
                 addImdbId(res.external_ids?.imdb_id)
@@ -198,10 +190,11 @@ open class StremioX : MainAPI() {
                 this.year = year
                 this.plot = res.overview
                 this.duration = res.runtime
-                this.tags = if (isAnime) keywords else genres
+                this.tags = keywords.takeIf { !it.isNullOrEmpty() } ?: genres
                 this.rating = rating
                 this.recommendations = recommendations
                 this.actors = actors
+                this.contentRating = fetchContentRating(data.id, "US")
                 addTrailer(trailer)
                 addTMDbId(data.id.toString())
                 addImdbId(res.external_ids?.imdb_id)
@@ -240,13 +233,13 @@ open class StremioX : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ) {
         val fixMainUrl = mainUrl.fixSourceUrl()
-        val url = if(season == null) {
+        val url = if (season == null) {
             "$fixMainUrl/stream/movie/$imdbId.json"
         } else {
             "$fixMainUrl/stream/series/$imdbId:$season:$episode.json"
         }
-        val res = AppUtils.tryParseJson<StreamsResponse>(request(url).body.string()) ?: return
-        res.streams.forEach { stream ->
+        val res = app.get(url, timeout = 120L).parsedSafe<StreamsResponse>()
+        res?.streams?.forEach { stream ->
             stream.runCallback(subtitleCallback, callback)
         }
     }
@@ -259,12 +252,12 @@ open class StremioX : MainAPI() {
     )
 
     private data class ProxyHeaders(
-        val request: Map<String,String>?,
+        val request: Map<String, String>?,
     )
 
     private data class BehaviorHints(
         val proxyHeaders: ProxyHeaders?,
-        val headers: Map<String,String>?,
+        val headers: Map<String, String>?,
     )
 
     private data class Stream(
@@ -287,12 +280,13 @@ open class StremioX : MainAPI() {
                 callback.invoke(
                     ExtractorLink(
                         name ?: "",
-                        fixRDSourceName(name, title),
+                        fixSourceName(name, title),
                         url,
                         "",
-                        getQualityFromName(description),
-                        headers = behaviorHints?.proxyHeaders?.request ?: behaviorHints?.headers ?: mapOf(),
-                        isM3u8 = URI(url).path.endsWith(".m3u8")
+                        getQuality(listOf(description,title,name)),
+                        headers = behaviorHints?.proxyHeaders?.request ?: behaviorHints?.headers
+                        ?: mapOf(),
+                        type = INFER_TYPE
                     )
                 )
                 subtitles.map { sub ->

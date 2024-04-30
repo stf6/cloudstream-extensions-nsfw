@@ -4,44 +4,23 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
-import okhttp3.Interceptor
-import okhttp3.Response
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
 class Samehadaku : MainAPI() {
-    override var mainUrl = "https://samehadaku.help"
+    override var mainUrl = "https://samehadaku.show"
     override var name = "Samehadaku"
     override val hasMainPage = true
     override var lang = "id"
     override val hasDownloadSupport = true
-    private val cloudflareKiller by lazy { CloudflareKiller() }
-    private val interceptor by lazy { CloudflareInterceptor(cloudflareKiller) }
     override val supportedTypes = setOf(
         TvType.Anime,
         TvType.AnimeMovie,
         TvType.OVA
     )
-
-    class CloudflareInterceptor(private val cloudflareKiller: CloudflareKiller): Interceptor {
-        override fun intercept(chain: Interceptor.Chain): Response {
-            val request = chain.request()
-            val response = chain.proceed(request)
-            val doc = Jsoup.parse(response.peekBody(1024 * 1024).string())
-            if (doc.select("title").text() == "Just a moment...") {
-                return cloudflareKiller.intercept(chain)
-            }
-            return response
-        }
-    }
-
     companion object {
-        const val acefile = "https://acefile.co"
-
         fun getType(t: String): TvType {
             return if (t.contains("OVA", true) || t.contains("Special", true)) TvType.OVA
             else if (t.contains("Movie", true)) TvType.AnimeMovie
@@ -69,7 +48,7 @@ class Samehadaku : MainAPI() {
         val items = mutableListOf<HomePageList>()
 
         if (request.name != "Episode Terbaru" && page <= 1) {
-            val doc = app.get(request.data, interceptor = interceptor).document
+            val doc = app.get(request.data).document
             doc.select("div.widget_senction:not(:contains(Baca Komik))").forEach { block ->
                 val header = block.selectFirst("div.widget-title h3")?.ownText() ?: return@forEach
                 val home = block.select("div.animepost").mapNotNull {
@@ -80,11 +59,10 @@ class Samehadaku : MainAPI() {
         }
 
         if (request.name == "Episode Terbaru") {
-            val home =
-                app.get(request.data + page, interceptor = interceptor).document.selectFirst("div.post-show")?.select("ul li")
-                    ?.mapNotNull {
-                        it.toSearchResult()
-                    } ?: throw ErrorLoadingException("No Media Found")
+            val home = app.get(request.data + page).document.selectFirst("div.post-show")?.select("ul li")
+                ?.mapNotNull {
+                    it.toSearchResult()
+                } ?: throw ErrorLoadingException("No Media Found")
             items.add(HomePageList(request.name, home, true))
         }
 
@@ -101,13 +79,12 @@ class Samehadaku : MainAPI() {
         return newAnimeSearchResponse(title, href ?: return null, TvType.Anime) {
             this.posterUrl = posterUrl
             addSub(epNum)
-            posterHeaders = cloudflareKiller.getCookieHeaders(mainUrl).toMap()
         }
 
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl/?s=$query", interceptor = interceptor).document
+        val document = app.get("$mainUrl/?s=$query").document
         return document.select("main#main div.animepost").mapNotNull {
             it.toSearchResult()
         }
@@ -117,10 +94,10 @@ class Samehadaku : MainAPI() {
         val fixUrl = if (url.contains("/anime/")) {
             url
         } else {
-            app.get(url, interceptor = interceptor).document.selectFirst("div.nvs.nvsc a")?.attr("href")
+            app.get(url).document.selectFirst("div.nvs.nvsc a")?.attr("href")
         }
 
-        val document = app.get(fixUrl ?: return null, interceptor = interceptor).document
+        val document = app.get(fixUrl ?: return null).document
         val title = document.selectFirst("h1.entry-title")?.text()?.removeBloat() ?: return null
         val poster = document.selectFirst("div.thumb > img")?.attr("src")
         val tags = document.select("div.genre-info > a").map { it.text() }
@@ -165,7 +142,6 @@ class Samehadaku : MainAPI() {
             this.recommendations = recommendations
             addMalId(tracker?.malId)
             addAniListId(tracker?.aniId?.toIntOrNull())
-            posterHeaders = cloudflareKiller.getCookieHeaders(mainUrl).toMap()
         }
 
     }
@@ -177,40 +153,13 @@ class Samehadaku : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        val document = app.get(data, interceptor = interceptor).document
+        val document = app.get(data).document
 
-        argamap(
-            {
-                document.select("div#server ul li div").apmap {
-                    val dataPost = it.attr("data-post")
-                    val dataNume = it.attr("data-nume")
-                    val dataType = it.attr("data-type")
-
-                    val iframe = app.post(
-                        url = "$mainUrl/wp-admin/admin-ajax.php",
-                        data = mapOf(
-                            "action" to "player_ajax",
-                            "post" to dataPost,
-                            "nume" to dataNume,
-                            "type" to dataType
-                        ),
-                        referer = data,
-                        headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-                        interceptor = interceptor
-                    ).document.select("iframe").attr("src")
-
-                    loadFixedExtractor(fixedIframe(iframe), it.text(), "$mainUrl/", subtitleCallback, callback)
-
-                }
-            },
-            {
-                document.select("div#downloadb li").map { el ->
-                    el.select("a").apmap {
-                        loadFixedExtractor(fixedIframe(it.attr("href")), el.select("strong").text(), "$mainUrl/", subtitleCallback, callback)
-                    }
-                }
+        document.select("div#downloadb li").map { el ->
+            el.select("a").apmap {
+                loadFixedExtractor(fixUrl(it.attr("href")), el.select("strong").text(), "$mainUrl/", subtitleCallback, callback)
             }
-        )
+        }
 
         return true
     }
@@ -239,18 +188,11 @@ class Samehadaku : MainAPI() {
     }
 
     private fun String.fixQuality() : Int {
-        return when(this) {
-            "MP4HD" -> Qualities.P720.value
+        return when(this.uppercase()) {
+            "4K" -> Qualities.P2160.value
             "FULLHD" -> Qualities.P1080.value
+            "MP4HD" -> Qualities.P720.value
             else -> this.filter { it.isDigit() }.toIntOrNull() ?: Qualities.Unknown.value
-        }
-    }
-
-    private fun fixedIframe(url: String): String {
-        val id = Regex("""(?:/f/|/file/)(\w+)""").find(url)?.groupValues?.getOrNull(1)
-        return when {
-            url.startsWith(acefile) -> "${acefile}/player/$id"
-            else -> fixUrl(url)
         }
     }
 

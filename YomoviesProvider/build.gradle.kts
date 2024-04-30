@@ -1,12 +1,12 @@
 // use an integer for version numbers
-version = 20
+version = 28
 
 
 cloudstream {
     language = "hi"
     // All of these properties are optional, you can safely remove them
 
-     description = "Include: Watchomovies"
+     description = "Includes: Watchomovies(NS*W), Max resolution is 720p in both extensions."
      authors = listOf("Hexated")
 
     /**

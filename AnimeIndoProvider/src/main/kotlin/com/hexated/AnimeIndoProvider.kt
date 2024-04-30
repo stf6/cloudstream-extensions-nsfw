@@ -15,7 +15,6 @@ class AnimeIndoProvider : MainAPI() {
     override var name = "AnimeIndo"
     override val hasMainPage = true
     override var lang = "id"
-
     override val supportedTypes = setOf(
         TvType.Anime,
         TvType.AnimeMovie,
@@ -50,8 +49,7 @@ class AnimeIndoProvider : MainAPI() {
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val url = "$mainUrl/${request.data}/page/$page"
-        val document = app.get(url).document
+        val document = app.get("$mainUrl/${request.data}/page/$page").document
         val home = document.select("main#main div.animposx").mapNotNull {
             it.toSearchResult()
         }
@@ -92,8 +90,7 @@ class AnimeIndoProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val anime = mutableListOf<SearchResponse>()
         (1..2).forEach { page ->
-            val link = "$mainUrl/page/$page/?s=$query"
-            val document = app.get(link).document
+            val document = app.get("$mainUrl/page/$page/?s=$query").document
             val media = document.select(".site-main.relat > article").mapNotNull {
                 val title = it.selectFirst("div.title > h2")!!.ownText().trim()
                 val href = it.selectFirst("a")!!.attr("href")
@@ -110,7 +107,6 @@ class AnimeIndoProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
-
         val title = document.selectFirst("h1.entry-title")?.text()?.replace("Subtitle Indonesia", "")
             ?.trim() ?: return null
         val poster = document.selectFirst("div.thumb > img[itemprop=image]")?.attr("src")

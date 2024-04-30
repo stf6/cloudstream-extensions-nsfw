@@ -1,26 +1,22 @@
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
-version = 182
+version = 228
 
 android {
     defaultConfig {
         val properties = Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
 
-        buildConfigField("String", "VATIC_API", "\"${properties.getProperty("VATIC_API")}\"")
+        buildConfigField("String", "TMDB_API", "\"${properties.getProperty("TMDB_API")}\"")
+        buildConfigField("String", "GHOSTX_API", "\"${properties.getProperty("GHOSTX_API")}\"")
+        buildConfigField("String", "CINEMATV_API", "\"${properties.getProperty("CINEMATV_API")}\"")
+        buildConfigField("String", "SFMOVIES_API", "\"${properties.getProperty("SFMOVIES_API")}\"")
         buildConfigField("String", "ZSHOW_API", "\"${properties.getProperty("ZSHOW_API")}\"")
-        buildConfigField("String", "SORA_API", "\"${properties.getProperty("SORA_API")}\"")
-        buildConfigField("String", "SORAHE", "\"${properties.getProperty("SORAHE")}\"")
-        buildConfigField("String", "SORAXA", "\"${properties.getProperty("SORAXA")}\"")
-        buildConfigField("String", "SORATED", "\"${properties.getProperty("SORATED")}\"")
         buildConfigField("String", "DUMP_API", "\"${properties.getProperty("DUMP_API")}\"")
         buildConfigField("String", "DUMP_KEY", "\"${properties.getProperty("DUMP_KEY")}\"")
-        buildConfigField("String", "PRIMEWIRE_KEY", "\"${properties.getProperty("PRIMEWIRE_KEY")}\"")
         buildConfigField("String", "CRUNCHYROLL_BASIC_TOKEN", "\"${properties.getProperty("CRUNCHYROLL_BASIC_TOKEN")}\"")
         buildConfigField("String", "CRUNCHYROLL_REFRESH_TOKEN", "\"${properties.getProperty("CRUNCHYROLL_REFRESH_TOKEN")}\"")
-
-
     }
 }
 
@@ -46,5 +42,5 @@ cloudstream {
         "Movie",
     )
 
-    iconUrl = "https://raw.githubusercontent.com/hexated/cloudstream-extensions-hexated/master/SoraStream/Icon.png"
+    iconUrl = "https://cdn.discordapp.com/attachments/1109266606292488297/1193122096159674448/2-modified.png?ex=65ec2a0a&is=65d9b50a&hm=f1e0b0165e71101e5440b47592d9e15727a6c00cdeb3512108067bfbdbef1af7&"
 }

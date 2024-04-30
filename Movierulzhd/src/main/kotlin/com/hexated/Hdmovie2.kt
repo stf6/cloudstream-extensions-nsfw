@@ -12,16 +12,14 @@ import org.jsoup.Jsoup
 
 class Hdmovie2 : Movierulzhd() {
 
-    override var mainUrl = "https://hdmovie2.tel"
-
+    override var mainUrl = "https://hdmovie2.chat"
     override var name = "Hdmovie2"
-
     override val mainPage = mainPageOf(
         "trending" to "Trending",
         "movies" to "Movies",
-        "genre/tv-series" to "TV-Series",
+        "genre/tv-series" to "TV Shows",
         "genre/netflix" to "Netflix",
-        "genre/zee5-tv-series" to "Zee5 TV Series",
+        "genre/zee5-tv-series" to "Zee5",
     )
 
     override suspend fun loadLinks(
@@ -32,11 +30,11 @@ class Hdmovie2 : Movierulzhd() {
     ): Boolean {
         if (data.startsWith("{")) {
             val loadData = tryParseJson<LinkData>(data)
-            val source = app.get(
-                url = "$directUrl/wp-json/dooplayer/v2/${loadData?.post}/${loadData?.type}/${loadData?.nume}",
-                referer = data,
-                headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-            ).parsed<ResponseHash>().embed_url.getIframe()
+            val source = app.post(
+                url = "$directUrl/wp-admin/admin-ajax.php", data = mapOf(
+                    "action" to "doo_player_ajax", "post" to "${loadData?.post}", "nume" to "${loadData?.nume}", "type" to "${loadData?.type}"
+                ), referer = data, headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest"
+                )).parsed<ResponseHash>().embed_url.getIframe()
             if (!source.contains("youtube")) loadExtractor(
                 source,
                 "$directUrl/",
@@ -44,20 +42,17 @@ class Hdmovie2 : Movierulzhd() {
                 callback
             )
         } else {
-            var document = app.get(data).document
-            if (document.select("title").text() == "Just a moment...") {
-                document = app.get(data, interceptor = interceptor).document
-            }
+            val document = app.get(data).document
             val id = document.select("meta#dooplay-ajax-counter").attr("data-postid")
             val type = if (data.contains("/movies/")) "movie" else "tv"
 
             document.select("ul#playeroptionsul > li").map {
                 it.attr("data-nume")
             }.apmap { nume ->
-                val source = app.get(
-                    url = "$directUrl/wp-json/dooplayer/v2/${id}/${type}/${nume}",
-                    referer = data,
-                    headers = mapOf("X-Requested-With" to "XMLHttpRequest")
+                val source = app.post(
+                    url = "$directUrl/wp-admin/admin-ajax.php", data = mapOf(
+                        "action" to "doo_player_ajax", "post" to id, "nume" to nume, "type" to type
+                    ), referer = data, headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest")
                 ).parsed<ResponseHash>().embed_url.getIframe()
                 when {
                     !source.contains("youtube") -> loadExtractor(

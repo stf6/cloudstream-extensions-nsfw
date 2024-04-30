@@ -10,7 +10,9 @@ import org.jsoup.nodes.Element
 import java.net.URI
 
 open class Gomov : MainAPI() {
-    override var mainUrl = "https://gomov.bio"
+
+    override var mainUrl = "https://gomov.info"
+
     private var directUrl: String? = null
     override var name = "Gomov"
     override val hasMainPage = true
@@ -20,8 +22,6 @@ open class Gomov : MainAPI() {
         TvType.TvSeries,
         TvType.AsianDrama
     )
-
-    private val sources = arrayOf("https://chillx.top", "https://watchx.top", "https://bestx.stream")
 
     override val mainPage = mainPageOf(
         "page/%d/?s&search=advanced&post_type=movie" to "Movies",
@@ -47,7 +47,7 @@ open class Gomov : MainAPI() {
     private fun Element.toSearchResult(): SearchResponse? {
         val title = this.selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
         val href = fixUrl(this.selectFirst("a")!!.attr("href"))
-        val posterUrl = fixUrlNull(this.selectFirst("a > img")?.attr("src"))?.fixImageQuality()
+        val posterUrl = fixUrlNull(this.selectFirst("a > img")?.getImageAttr()).fixImageQuality()
         val quality = this.select("div.gmr-qual, div.gmr-quality-item > a").text().trim().replace("-", "")
         return if (quality.isEmpty()) {
             val episode =
@@ -68,7 +68,7 @@ open class Gomov : MainAPI() {
     private fun Element.toRecommendResult(): SearchResponse? {
         val title = this.selectFirst("a > span.idmuvi-rp-title")?.text()?.trim() ?: return null
         val href = this.selectFirst("a")!!.attr("href")
-        val posterUrl = fixUrlNull(this.selectFirst("a > img")?.attr("src").fixImageQuality())
+        val posterUrl = fixUrlNull(this.selectFirst("a > img")?.getImageAttr().fixImageQuality())
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
         }
@@ -90,7 +90,7 @@ open class Gomov : MainAPI() {
             document.selectFirst("h1.entry-title")?.text()?.substringBefore("Season")?.substringBefore("Episode")?.trim()
                 .toString()
         val poster =
-            fixUrlNull(document.selectFirst("figure.pull-left > img")?.attr("src"))?.fixImageQuality()
+            fixUrlNull(document.selectFirst("figure.pull-left > img")?.getImageAttr())?.fixImageQuality()
         val tags = document.select("span.gmr-movie-genre:contains(Genre:) > a").map { it.text() }
 
         val year =
@@ -158,14 +158,9 @@ open class Gomov : MainAPI() {
         if(id.isNullOrEmpty()) {
             document.select("ul.muvipro-player-tabs li a").apmap { ele ->
                 val iframe = app.get(fixUrl(ele.attr("href"))).document.selectFirst("div.gmr-embed-responsive iframe")
-                    ?.attr("src")?.let { httpsify(it) } ?: return@apmap
+                    .getIframeAttr()?.let { httpsify(it) } ?: return@apmap
 
-                when {
-                    sources.any { iframe.startsWith(it) } -> NineTv.getUrl(iframe, "$directUrl/", subtitleCallback, callback)
-                    else -> {
-                        loadExtractor(iframe, "$directUrl/", subtitleCallback, callback)
-                    }
-                }
+                loadExtractor(iframe, "$directUrl/", subtitleCallback, callback)
             }
         } else {
             document.select("div.tab-content-ajax").apmap { ele ->
@@ -174,12 +169,7 @@ open class Gomov : MainAPI() {
                     data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id")
                 ).document.select("iframe").attr("src").let { httpsify(it) }
 
-                when {
-                    sources.any { server.startsWith(it) } -> NineTv.getUrl(server, "$directUrl/", subtitleCallback, callback)
-                    else -> {
-                        loadExtractor(server, "$directUrl/", subtitleCallback, callback)
-                    }
-                }
+                loadExtractor(server, "$directUrl/", subtitleCallback, callback)
 
             }
         }
@@ -188,20 +178,29 @@ open class Gomov : MainAPI() {
 
     }
 
-}
-
-fun String?.fixImageQuality(): String? {
-    if (this == null) return null
-    val regex = Regex("(-\\d*x\\d*)").find(this)?.groupValues?.get(0) ?: return this
-    return this.replace(regex, "")
-}
-
-fun getBaseUrl(url: String): String {
-    return URI(url).let {
-        "${it.scheme}://${it.host}"
+    private fun Element.getImageAttr(): String? {
+        return when {
+            this.hasAttr("data-src") -> this.attr("abs:data-src")
+            this.hasAttr("data-lazy-src") -> this.attr("abs:data-lazy-src")
+            this.hasAttr("srcset") -> this.attr("abs:srcset").substringBefore(" ")
+            else -> this.attr("abs:src")
+        }
     }
-}
 
-fun String.getHost(): String {
-    return fixTitle(URI(this).host.substringBeforeLast(".").substringAfterLast("."))
+    private fun Element?.getIframeAttr() : String? {
+        return this?.attr("data-litespeed-src").takeIf { it?.isNotEmpty() == true } ?: this?.attr("src")
+    }
+
+    private fun String?.fixImageQuality(): String? {
+        if (this == null) return null
+        val regex = Regex("(-\\d*x\\d*)").find(this)?.groupValues?.get(0) ?: return this
+        return this.replace(regex, "")
+    }
+
+    private fun getBaseUrl(url: String): String {
+        return URI(url).let {
+            "${it.scheme}://${it.host}"
+        }
+    }
+
 }

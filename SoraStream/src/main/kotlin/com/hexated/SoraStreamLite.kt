@@ -1,9 +1,9 @@
 package com.hexated
 
 import com.hexated.SoraExtractor.invoke2embed
+import com.hexated.SoraExtractor.invokeAllMovieland
 import com.hexated.SoraExtractor.invokeAnimes
-import com.hexated.SoraExtractor.invokeBlackvid
-import com.hexated.SoraExtractor.invokeDbgo
+import com.hexated.SoraExtractor.invokeAoneroom
 import com.hexated.SoraExtractor.invokeDoomovies
 import com.hexated.SoraExtractor.invokeDramaday
 import com.hexated.SoraExtractor.invokeDreamfilm
@@ -14,7 +14,6 @@ import com.hexated.SoraExtractor.invokeKimcartoon
 import com.hexated.SoraExtractor.invokeKisskh
 import com.hexated.SoraExtractor.invokeLing
 import com.hexated.SoraExtractor.invokeM4uhd
-import com.hexated.SoraExtractor.invokeNavy
 import com.hexated.SoraExtractor.invokeNinetv
 import com.hexated.SoraExtractor.invokeNowTv
 import com.hexated.SoraExtractor.invokeRStream
@@ -22,18 +21,18 @@ import com.hexated.SoraExtractor.invokeRidomovies
 import com.hexated.SoraExtractor.invokeSmashyStream
 import com.hexated.SoraExtractor.invokeDumpStream
 import com.hexated.SoraExtractor.invokeEmovies
-import com.hexated.SoraExtractor.invokeJump1
-import com.hexated.SoraExtractor.invokeMoment
 import com.hexated.SoraExtractor.invokeMultimovies
 import com.hexated.SoraExtractor.invokeNetmovies
-import com.hexated.SoraExtractor.invokeGomovies
-import com.hexated.SoraExtractor.invokePutactor
 import com.hexated.SoraExtractor.invokeShowflix
-import com.hexated.SoraExtractor.invokeVatic
 import com.hexated.SoraExtractor.invokeVidSrc
 import com.hexated.SoraExtractor.invokeVidsrcto
-import com.hexated.SoraExtractor.invokeWatchOnline
+import com.hexated.SoraExtractor.invokeCinemaTv
+import com.hexated.SoraExtractor.invokeMoflix
+import com.hexated.SoraExtractor.invokeGhostx
+import com.hexated.SoraExtractor.invokeNepu
+import com.hexated.SoraExtractor.invokeWatchCartoon
 import com.hexated.SoraExtractor.invokeWatchsomuch
+import com.hexated.SoraExtractor.invokeZoechip
 import com.hexated.SoraExtractor.invokeZshow
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.argamap
@@ -54,16 +53,7 @@ class SoraStreamLite : SoraStream() {
 
         argamap(
             {
-                if(!res.isAnime) invokeJump1(res.id,res.tvdbId,res.title,res.year,res.season,res.episode,callback)
-            },
-            {
-                if (!res.isAnime) invokeBlackvid(
-                    res.id,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
-                )
+                if (!res.isAnime) invokeMoflix(res.id, res.season, res.episode, callback)
             },
             {
                 if (!res.isAnime) invokeWatchsomuch(
@@ -104,10 +94,17 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                invokeVidSrc(res.id, res.season, res.episode, subtitleCallback, callback)
+                invokeVidSrc(res.id, res.season, res.episode, callback)
             },
             {
-                invokeDbgo(res.imdbId, res.season, res.episode, subtitleCallback, callback)
+                if (!res.isAnime && res.isCartoon) invokeWatchCartoon(
+                    res.title,
+                    res.year,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
             },
             {
                 if (res.isAnime) invokeAnimes(
@@ -140,7 +137,16 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                if (!res.isAnime) invokeKimcartoon(
+                if (!res.isAnime) invokeGhostx(
+                    res.title,
+                    res.year,
+                    res.season,
+                    res.episode,
+                    callback
+                )
+            },
+            {
+                if (!res.isAnime && res.isCartoon) invokeKimcartoon(
                     res.title,
                     res.season,
                     res.episode,
@@ -150,7 +156,7 @@ class SoraStreamLite : SoraStream() {
             },
             {
                 if (!res.isAnime) invokeSmashyStream(
-                    res.imdbId,
+                    res.id,
                     res.season,
                     res.episode,
                     subtitleCallback,
@@ -167,7 +173,7 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                invokeKisskh(
+                if (res.isAsian || res.isAnime) invokeKisskh(
                     res.title,
                     res.season,
                     res.episode,
@@ -179,57 +185,50 @@ class SoraStreamLite : SoraStream() {
             },
             {
                 if (!res.isAnime) invokeLing(
-                    res.title,
-                    res.airedYear ?: res.year,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
+                    res.title, res.airedYear
+                        ?: res.year, res.season, res.episode, subtitleCallback, callback
                 )
             },
             {
-                if(!res.isAnime) invokeM4uhd(
-                    res.title,
-                    res.airedYear ?: res.year,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
+                if (!res.isAnime) invokeM4uhd(
+                    res.title, res.airedYear
+                        ?: res.year, res.season, res.episode, subtitleCallback, callback
                 )
             },
             {
                 if (!res.isAnime) invokeRStream(res.id, res.season, res.episode, callback)
             },
             {
-                if (!res.isAnime) invokeFlixon(res.id, res.imdbId, res.season, res.episode, callback)
-            },
-            {
-                if (!res.isAnime) invokeGomovies(res.title, res.year, res.season, res.episode, callback)
-            },
-            {
-                if (!res.isAnime) invokePutactor(res.title, res.year, res.season, res.episode, callback)
-            },
-            {
-                invokeWatchOnline(
+                if (!res.isAnime) invokeFlixon(
+                    res.id,
                     res.imdbId,
-                    res.title,
-                    res.airedYear ?: res.year,
                     res.season,
                     res.episode,
-                    subtitleCallback,
                     callback
                 )
             },
             {
-                if (!res.isAnime) invokeNowTv(res.id, res.season, res.episode, callback)
+                invokeCinemaTv(
+                    res.imdbId, res.title, res.airedYear
+                        ?: res.year, res.season, res.episode, subtitleCallback, callback
+                )
             },
             {
-                invokeNavy(res.imdbId, res.season, res.episode, callback)
+                if (!res.isAnime) invokeNowTv(res.id, res.imdbId, res.season, res.episode, callback)
             },
             {
-                if (!res.isAnime && res.season == null) invokeRidomovies(
-                    res.title,
-                    res.year,
+                if (!res.isAnime) invokeAoneroom(
+                    res.title, res.airedYear
+                        ?: res.year, res.season, res.episode, subtitleCallback, callback
+                )
+            },
+            {
+                if (!res.isAnime) invokeRidomovies(
+                    res.id,
+                    res.imdbId,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
                     callback
                 )
             },
@@ -244,7 +243,24 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                invokeMultimovies(res.title, res.season, res.episode, subtitleCallback, callback)
+                if (res.isBollywood) invokeMultimovies(
+                    multimoviesAPI,
+                    res.title,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
+            },
+            {
+                if (res.isBollywood) invokeMultimovies(
+                    multimovies2API,
+                    res.title,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
             },
             {
                 invokeNetmovies(
@@ -257,7 +273,7 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                invokeMoment(res.imdbId, res.season, res.episode, callback)
+                if (!res.isAnime) invokeAllMovieland(res.imdbId, res.season, res.episode, callback)
             },
             {
                 if (!res.isAnime && res.season == null) invokeDoomovies(
@@ -267,7 +283,7 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                if(res.isAsian) invokeDramaday(
+                if (res.isAsian) invokeDramaday(
                     res.title,
                     res.year,
                     res.season,
@@ -276,19 +292,12 @@ class SoraStreamLite : SoraStream() {
                     callback
                 )
             },
-//            {
-//                if (!res.isAnime) invokeWatchflx(
-//                    res.id,
-//                    res.season,
-//                    res.episode,
-//                    callback
-//                )
-//            },
             {
-                if(!res.isAnime) invoke2embed(
+                if (!res.isAnime) invoke2embed(
                     res.imdbId,
                     res.season,
                     res.episode,
+                    subtitleCallback,
                     callback
                 )
             },
@@ -313,14 +322,23 @@ class SoraStreamLite : SoraStream() {
                 )
             },
             {
-                if (!res.isAnime) invokeVatic(
-                    res.id,
+                if (!res.isAnime) invokeZoechip(
+                    res.title,
+                    res.year,
                     res.season,
                     res.episode,
-                    subtitleCallback,
                     callback
                 )
             },
+            {
+                if (!res.isAnime) invokeNepu(
+                    res.title,
+                    res.airedYear ?: res.year,
+                    res.season,
+                    res.episode,
+                    callback
+                )
+            }
         )
 
         return true
